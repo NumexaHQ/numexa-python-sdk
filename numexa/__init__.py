@@ -31,7 +31,7 @@ from numexa.api_resources.global_constants import (
 )
 
 api_key = os.environ.get(NUMEXA_API_KEY)
-if os.environ.get(NUMEXA_PROXY, "true").lower() == "true":
+if not os.environ.get(NUMEXA_PROXY):
     base_url = NUMEXA_PROXY_URL
 else:
     base_url = NUMEXA_DIRECT_URL

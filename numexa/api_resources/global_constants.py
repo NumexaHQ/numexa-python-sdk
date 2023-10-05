@@ -28,7 +28,7 @@ DEFAULT_MAX_RETRIES = 2
 VERSION = "0.1.0"
 DEFAULT_TIMEOUT = 60
 NUMEXA_HEADER_PREFIX = "X-Numexa-"
-NUMEXA_DIRECT_URL = "https://app.numexa.io/proxy/v1/openapi"
+NUMEXA_DIRECT_URL = "https://api.openai.com/v1"
 
 NUMEXA_API_KEY = "NUMEXA_API_KEY"
 NUMEXA_PROXY_URL = "https://app.numexa.io/proxy/v1/openai"
