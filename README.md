@@ -171,7 +171,7 @@ print(response.choices[0].message)
 
 ---
 
-#### [📝 Full Documentation](https://docs.numexa.io/) | [🛠️ Integration Requests](https://github.com/numexa-python-sdk/issues) | 
+#### [📝 Full Documentation](https://docs.numexa.io/) | [🛠️ Integration Requests](https://github.com/NumexaHQ/numexa-python-sdk/issues) | 
 
 <a href="#"><img src="" alt="follow on Twitter"></a>
 <a href="https://discord.gg/mVBMKVCv" target="_blank"><img src="https://img.shields.io/discord/1143926407882350794?logo=discord" alt="Discord"></a>
