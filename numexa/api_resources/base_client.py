@@ -267,7 +267,7 @@ class APIClient:
                 f"{NUMEXA_HEADER_PREFIX}runtime": platform.python_implementation(),
                 f"{NUMEXA_HEADER_PREFIX}runtime-version": platform.python_version(),
                 f"{NUMEXA_HEADER_PREFIX}Cache": "true",
-                "Authorization": os.environ.get(OPEN_API_KEY),
+                # "Authorization": os.environ.get(OPEN_API_KEY),
 
             }
         # Proxy Off
