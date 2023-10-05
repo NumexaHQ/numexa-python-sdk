@@ -5,11 +5,11 @@ Hello and thank you for considering contributing to the Portkey Python SDK! Whet
 1. Fork the repository on Github.
 2. Clone your forked repository to your machine. 
 ```sh
-$ git clone https://github.com/YOUR_USERNAME/portkey-python-sdk.git
+$ git clone https://github.com/YOUR_USERNAME/numexa-python-sdk.git
 ```
 3. Set up a virtual environment.
 ```sh
-$ cd portkey-python-sdk
+$ cd numexa-python-sdk
 $ python -m venv .venv
 $ source .venv/bin/activate # On macOS and Linux
 ```
@@ -34,10 +34,10 @@ make format; make lint
 *   `bug: ` for bug fixes.
 
 ## 🤔 Getting Help
-Facing issues or have questions? Don't hesitate to share your doubts or questions on our [Discord Community](https://discord.com/invite/DD7vgKK299) - this is the quickest way to get support and connect with other contributors.
+Facing issues or have questions? Don't hesitate to share your doubts or questions on our [Discord Community](https://discord.com/invite/tM9bYwZrKg) - this is the quickest way to get support and connect with other contributors.
 
 ## 🚧 Release Process
 Releases are made as soon as possible to ensure that new features and fixes reach our users quickly. We follow a seamless CI/CD pipeline to ensure the smooth transition of code from development to production.
 
 ## 🎊 Your PR is Merged!
-All successful PRs are celebrated on our [Discord](https://discord.com/invite/DD7vgKK299) and are mentioned in the release notes, and significant contributions are highlighted on our [Twitter](https://twitter.com/PortkeyAI). Stay tuned for more bounties and goodies for contributors in the near future!
+All successful PRs are celebrated on our [Discord](https://discord.com/invite/tM9bYwZrKg) and are mentioned in the release notes, and significant contributions are highlighted on our [Twitter](https://twitter.com/numexa-python-sdk). Stay tuned for more bounties and goodies for contributors in the near future!

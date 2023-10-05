@@ -4,4 +4,4 @@ This project uses GitHub Issues to track bugs and feature requests. Please searc
 issues before filing new issues to avoid duplicates.  For new issues, file your bug or 
 feature request as a new Issue.
 
-For help and questions about using this project, please contact `https://docs.numexa.io/`. Join the community discussions [here](https://discord.com/invite/mVBMKVCv).
+For help and questions about using this project, please contact `https://docs.numexa.io/`. Join the community discussions [here](https://discord.com/invite/tM9bYwZrKg).
