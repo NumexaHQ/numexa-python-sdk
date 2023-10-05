@@ -137,7 +137,8 @@ class APIClient:
     ) -> Union[ResponseT, StreamT]:
         if path in [NumexaApiPaths.CHAT_COMPLETION, NumexaApiPaths.COMPLETION]:
             body = cast(List[Body], body)
-            opts = self._construct(
+            # todo: change _construct_direct to _construct
+            opts = self._construct_direct(
                 method="post",
                 url=path,
                 body=body,
@@ -391,7 +392,8 @@ class APIClient:
     ) -> Union[ResponseT, StreamT]:
         # proxy on
         if not os.environ.get("NUMEXA_PROXY"):
-            request_list = self._build_request(options)
+            # todo: change _build_request_direct to _build_request
+            request_list = self._build_request_direct(options)
         # proxy off
         else:
             request_list = self._build_request_direct(options)
