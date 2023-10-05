@@ -145,6 +145,17 @@ class APIClient:
                 stream=stream,
                 params=params,
             )
+        elif path in NumexaApiPaths.CHAT_COMPLETION_DIRECT:
+            body = cast(List[Body], body)
+            opts = self._construct_direct(
+                method="post",
+                url=path.split("/direct")[0],
+                body=body,
+                mode=mode,
+                stream=stream,
+                params=params,
+            )
+
         elif path.endswith("/generate"):
             opts = self._construct_generate_options(
                 method="post",
@@ -205,6 +216,28 @@ class APIClient:
         opts.headers = None
         return opts
 
+    def _construct_direct(
+            self,
+            *,
+            method: str,
+            url: str,
+            body: List[Body],
+            mode: str,
+            stream: bool,
+            params: Params,
+    ) -> Options:
+        opts = Options.construct()
+        opts.method = method
+        opts.url = url
+        params_dict = {} if params is None else params.dict()
+        json_body = {
+            "model": self._config_direct(mode, body),
+            "messages": params_dict.get("messages", [{}])
+        }
+        opts.json_body = remove_empty_values(json_body)
+        opts.headers = None
+        return opts
+
     def _config(self, mode: str, body: List[Body]) -> RequestConfig:
         config = RequestConfig(mode=mode, options=[])
         for i in body:
@@ -216,18 +249,32 @@ class APIClient:
             config.options.append(options)
         return config
 
+    def _config_direct(self, mode: str, body: List[Body]) -> List[str]:
+        config = []
+        for i in body:
+            config.append(i.model)
+        return config
+
     @property
     def _default_headers(self) -> Mapping[str, str]:
-        return {
-            "Content-Type": "application/json",
-            f"{NUMEXA_HEADER_PREFIX}Api-Key": self.api_key,
-            f"{NUMEXA_HEADER_PREFIX}package-version": f"numexa-{VERSION}",
-            f"{NUMEXA_HEADER_PREFIX}runtime": platform.python_implementation(),
-            f"{NUMEXA_HEADER_PREFIX}runtime-version": platform.python_version(),
-            f"{NUMEXA_HEADER_PREFIX}Cache": "true",
-            "Authorization": os.environ.get(OPEN_API_KEY),
+        # Proxy ON
+        if not os.environ.get("NUMEXA_PROXY"):
+            return {
+                "Content-Type": "application/json",
+                f"{NUMEXA_HEADER_PREFIX}Api-Key": self.api_key,
+                f"{NUMEXA_HEADER_PREFIX}package-version": f"numexa-{VERSION}",
+                f"{NUMEXA_HEADER_PREFIX}runtime": platform.python_implementation(),
+                f"{NUMEXA_HEADER_PREFIX}runtime-version": platform.python_version(),
+                f"{NUMEXA_HEADER_PREFIX}Cache": "true",
+                "Authorization": os.environ.get(OPEN_API_KEY),
 
-        }
+            }
+        # Proxy Off
+        else:
+            return {
+                "Content-Type": "application/json",
+                "Authorization": os.environ.get(OPEN_API_KEY)
+            }
 
     def _build_headers(self, options: Options) -> httpx.Headers:
         custom_headers = options.headers or {}
@@ -266,7 +313,7 @@ class APIClient:
     ) -> None:
         self.close()
 
-    def _build_request(self, options: Options) -> httpx.Request:
+    def _build_request(self, options: Options) -> List[httpx.Request]:
         headers = self._build_headers(options)
         params = options.params
         json_body = options.json_body
@@ -278,7 +325,28 @@ class APIClient:
             json=json_body,
             timeout=options.timeout,
         )
-        return request
+        return [request]
+
+    def _build_request_direct(self, options: Options) -> List[httpx.Request]:
+        headers = self._build_headers(options)
+        new_payload = dict()
+        request_list = []
+        params = options.params
+        json_body = options.json_body
+        messages = json_body.get("messages", [{}])
+        models = json_body.get("model", [""])
+        new_payload["messages"] = messages
+        for model in models:
+            new_payload["model"] = model
+            request_list.append(self._client.build_request(
+                method=options.method,
+                url=options.url,
+                headers=headers,
+                params=params,
+                json=new_payload,
+                timeout=options.timeout,
+            ))
+        return request_list
 
     @overload
     def _request(
@@ -321,32 +389,38 @@ class APIClient:
         cast_to: Type[ResponseT],
         stream_cls: Type[StreamT],
     ) -> Union[ResponseT, StreamT]:
-        request = self._build_request(options)
-        try:
-            res = self._client.send(request, auth=self.custom_auth, stream=stream)
-            res.raise_for_status()
-        except httpx.HTTPStatusError as err:  # 4xx and 5xx errors
-            # If the response is streamed then we need to explicitly read the response
-            # to completion before attempting to access the response text.
-            err.response.read()
-            raise self._make_status_error_from_response(request, err.response) from None
-        except httpx.TimeoutException as err:
-            raise APITimeoutError(request=request) from err
-        except Exception as err:
-            raise APIConnectionError(request=request) from err
-        if stream or res.headers["content-type"] == "text/event-stream":
-            if stream_cls is None:
-                raise MissingStreamClassError()
-            stream_response = stream_cls(
-                response=res, cast_to=self._extract_stream_chunk_type(stream_cls)
+        # proxy on
+        if not os.environ.get("NUMEXA_PROXY"):
+            request_list = self._build_request(options)
+        # proxy off
+        else:
+            request_list = self._build_request_direct(options)
+        for request in request_list:
+            try:
+                res = self._client.send(request, auth=self.custom_auth, stream=stream)
+                res.raise_for_status()
+            except httpx.HTTPStatusError as err:  # 4xx and 5xx errors
+                # If the response is streamed then we need to explicitly read the response
+                # to completion before attempting to access the response text.
+                print(err.response.read())
+                continue
+                # raise self._make_status_error_from_response(request, err.response) from None
+            except httpx.TimeoutException as err:
+                raise APITimeoutError(request=request) from err
+            except Exception as err:
+                raise APIConnectionError(request=request) from err
+            if stream or res.headers["content-type"] == "text/event-stream":
+                if stream_cls is None:
+                    raise MissingStreamClassError()
+                stream_response = stream_cls(
+                    response=res, cast_to=self._extract_stream_chunk_type(stream_cls)
+                )
+                return stream_response
+            response = cast(
+                ResponseT,
+                cast_to(**res.json()),
             )
-            return stream_response
-
-        response = cast(
-            ResponseT,
-            cast_to(**res.json()),
-        )
-        return response
+            return response
 
     def _extract_stream_chunk_type(self, stream_cls: Type) -> type:
         args = get_args(stream_cls)

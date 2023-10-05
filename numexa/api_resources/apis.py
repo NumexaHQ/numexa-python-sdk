@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Union, overload, Literal, List, Mapping, Any
 from numexa.api_resources.base_client import APIClient
 from .utils import (
@@ -215,9 +216,15 @@ class ChatCompletions(APIResource):
             top_p=top_p,
             **kwargs,
         )
+        # Proxy On
+        if not os.environ.get("NUMEXA_PROXY"):
+            url = "/chat/completions"
+        # proxy Off
+        else:
+            url = "/chat/completions/direct"
         if config.mode == Modes.SINGLE.value:
             return cls(_client)._post(
-                "/chat/completions",
+                url,
                 body=config.llms,
                 mode=Modes.SINGLE.value,
                 params=params,
@@ -227,7 +234,7 @@ class ChatCompletions(APIResource):
             )
         if config.mode == Modes.FALLBACK.value:
             return cls(_client)._post(
-                "/chat/completions",
+                url,
                 body=config.llms,
                 mode=Modes.FALLBACK,
                 params=params,
@@ -237,7 +244,7 @@ class ChatCompletions(APIResource):
             )
         if config.mode == Modes.AB_TEST.value:
             return cls(_client)._post(
-                "/v1/chatComplete",
+                url,
                 body=config.llms,
                 mode=Modes.AB_TEST,
                 params=params,

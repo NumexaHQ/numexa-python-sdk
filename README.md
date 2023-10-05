@@ -47,7 +47,7 @@ os.environ["NUMEXA_API_KEY"] = "NUMEXA_API_KEY"
 **Numexa Without proxy:**
 ```python
 import os
-os.environ["NUMEXA_PROXY"] = "false"
+os.environ["NUMEXA_PROXY"] = "disable"
 ```
 **Virtual Keys:** Navigate to the "API Keys" page on [Numexa](https://app.numexa.io/admin/keys) and hit the "Generate" button. Choose your AI provider and assign a unique name to your key. Your virtual key is ready!
 

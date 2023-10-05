@@ -99,6 +99,7 @@ class NumexaApiPaths(str, Enum, metaclass=MetaEnum):
     CHAT_COMPLETION = "/chat/completions"
     COMPLETION = "/complete"
     GENERATION = "/v1/prompts/{prompt_id}/generate"
+    CHAT_COMPLETION_DIRECT = "/chat/completions/direct"
 
 
 class Options(BaseModel):
