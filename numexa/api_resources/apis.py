@@ -33,14 +33,14 @@ class APIResource:
         # self._put = client.put
         # self._delete = client.delete
 
-    def _post(self, *args, **kwargs):
-        return self._client.post(*args, **kwargs)
+    async def _post(self, *args, **kwargs):
+        return await self._client.post(*args, **kwargs)
 
 
 class Completions(APIResource):
     @classmethod
     @overload
-    def create(
+    async def create(
         cls,
         *,
         prompt: Optional[str] = None,
@@ -56,7 +56,7 @@ class Completions(APIResource):
 
     @classmethod
     @overload
-    def create(
+    async def create(
         cls,
         *,
         prompt: Optional[str] = None,
@@ -72,7 +72,7 @@ class Completions(APIResource):
 
     @classmethod
     @overload
-    def create(
+    async def create(
         cls,
         *,
         prompt: Optional[str] = None,
@@ -87,7 +87,7 @@ class Completions(APIResource):
         ...
 
     @classmethod
-    def create(
+    async def create(
         cls,
         *,
         prompt: Optional[str] = None,
@@ -111,7 +111,7 @@ class Completions(APIResource):
             **kwargs,
         )
         if config.mode == Modes.SINGLE.value:
-            return cls(_client)._post(
+            return await cls(_client)._post(
                 "/v1/complete",
                 body=config.llms,
                 mode=Modes.SINGLE.value,
@@ -121,7 +121,7 @@ class Completions(APIResource):
                 stream=stream,
             )
         if config.mode == Modes.FALLBACK.value:
-            return cls(_client)._post(
+            return await cls(_client)._post(
                 "/v1/complete",
                 body=config.llms,
                 mode=Modes.FALLBACK,
@@ -131,7 +131,7 @@ class Completions(APIResource):
                 stream=stream,
             )
         if config.mode == Modes.AB_TEST.value:
-            return cls(_client)._post(
+            return await cls(_client)._post(
                 "/v1/complete",
                 body=config.llms,
                 mode=Modes.AB_TEST,
@@ -146,7 +146,7 @@ class Completions(APIResource):
 class ChatCompletions(APIResource):
     @classmethod
     @overload
-    def create(
+    async def create(
         cls,
         *,
         messages: Optional[List[Message]] = None,
@@ -162,7 +162,7 @@ class ChatCompletions(APIResource):
 
     @classmethod
     @overload
-    def create(
+    async def create(
         cls,
         *,
         messages: Optional[List[Message]] = None,
@@ -178,7 +178,7 @@ class ChatCompletions(APIResource):
 
     @classmethod
     @overload
-    def create(
+    async def create(
         cls,
         *,
         messages: Optional[List[Message]] = None,
@@ -193,7 +193,7 @@ class ChatCompletions(APIResource):
         ...
 
     @classmethod
-    def create(
+    async def create(
         cls,
         *,
         messages: Optional[List[Message]] = None,
@@ -223,7 +223,7 @@ class ChatCompletions(APIResource):
         else:
             url = "/chat/completions/direct"
         if config.mode == Modes.SINGLE.value:
-            return cls(_client)._post(
+            return await cls(_client)._post(
                 url,
                 body=config.llms,
                 mode=Modes.SINGLE.value,
@@ -233,7 +233,7 @@ class ChatCompletions(APIResource):
                 stream=stream,
             )
         if config.mode == Modes.FALLBACK.value:
-            return cls(_client)._post(
+            return await cls(_client)._post(
                 url,
                 body=config.llms,
                 mode=Modes.FALLBACK,
@@ -243,7 +243,7 @@ class ChatCompletions(APIResource):
                 stream=stream,
             )
         if config.mode == Modes.AB_TEST.value:
-            return cls(_client)._post(
+            return await cls(_client)._post(
                 url,
                 body=config.llms,
                 mode=Modes.AB_TEST,
@@ -257,7 +257,7 @@ class ChatCompletions(APIResource):
 
 class Generations(APIResource):
     @classmethod
-    def create(
+    async def create(
         cls,
         *,
         prompt_id: str,
@@ -268,7 +268,7 @@ class Generations(APIResource):
             config = retrieve_config()
         _client = APIClient(api_key=config.api_key, base_url=config.base_url)
         body = {"variables": variables}
-        return cls(_client)._post(
+        return await cls(_client)._post(
             f"/v1/prompts/{prompt_id}/generate",
             body=body,
             mode=None,
