@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import socket
+from datetime import datetime
 from types import TracebackType
 from typing import (
     Dict,
@@ -18,7 +20,7 @@ from typing import (
 )
 import httpx
 import platform
-from .global_constants import NUMEXA_HEADER_PREFIX, OPEN_API_KEY
+from .global_constants import NUMEXA_HEADER_PREFIX, OPEN_API_KEY, NUMEXA_INGEST_LOGS
 from .utils import (
     remove_empty_values,
     Body,
@@ -50,7 +52,7 @@ class MissingStreamClassError(TypeError):
 
 
 class APIClient:
-    _client: httpx.Client
+    _client: httpx.AsyncClient
     _default_stream_cls: Union[type[Stream[Any]], None] = None
 
     def __init__(
@@ -61,7 +63,7 @@ class APIClient:
     ) -> None:
         self.api_key = api_key or default_api_key()
         self.base_url = base_url or default_base_url()
-        self._client = httpx.Client(
+        self._client = httpx.AsyncClient(
             base_url=self.base_url,
             headers={"Accept": "application/json"},
         )
@@ -83,7 +85,7 @@ class APIClient:
         return None
 
     @overload
-    def post(
+    async def post(
         self,
         path: str,
         *,
@@ -97,7 +99,7 @@ class APIClient:
         ...
 
     @overload
-    def post(
+    async def post(
         self,
         path: str,
         *,
@@ -111,7 +113,7 @@ class APIClient:
         ...
 
     @overload
-    def post(
+    async def post(
         self,
         path: str,
         *,
@@ -124,7 +126,7 @@ class APIClient:
     ) -> Union[ResponseT, StreamT]:
         ...
 
-    def post(
+    async def post(
         self,
         path: str,
         *,
@@ -169,7 +171,7 @@ class APIClient:
         else:
             raise NotImplementedError(f"This API path `{path}` is not implemented.")
 
-        res = self._request(
+        res = await self._request(
             options=opts,
             stream=stream,
             cast_to=cast_to,
@@ -328,7 +330,7 @@ class APIClient:
         )
         return [request]
 
-    def _build_request_direct(self, options: Options) -> List[httpx.Request]:
+    async def _build_request_direct(self, options: Options) -> List[httpx.Request]:
         headers = self._build_headers(options)
         new_payload = dict()
         request_list = []
@@ -382,7 +384,7 @@ class APIClient:
     ) -> Union[ResponseT, StreamT]:
         ...
 
-    def _request(
+    async def _request(
         self,
         *,
         options: Options,
@@ -393,13 +395,52 @@ class APIClient:
         # proxy on
         if not os.environ.get("NUMEXA_PROXY"):
             # todo: change _build_request_direct to _build_request
-            request_list = self._build_request_direct(options)
+            request_list = await self._build_request_direct(options)
         # proxy off
         else:
-            request_list = self._build_request_direct(options)
+            request_list = await self._build_request_direct(options)
         for request in request_list:
             try:
-                res = self._client.send(request, auth=self.custom_auth, stream=stream)
+                initiated_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+                res = await self._client.send(request, auth=self.custom_auth, stream=stream)
+                if os.environ.get("NUMEXA_PROXY"):
+                    response_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+                    # Preparing Monger Request Body
+                    monger_request_body = dict()
+                    monger_request_body["request_time"] = initiated_timestamp
+                    hostname = socket.gethostname()
+                    monger_request_body["source_ip"] = socket.gethostbyname(hostname)
+                    monger_request_body["request_method"] = "POST"
+                    monger_request_body["request_url"] = str(request.url)
+                    monger_request_body["request_body"] = json.loads(request.content.decode("utf-8"))
+                    request.headers.update(
+                        {"X-Numexa-Log-Type": "request", "X-Numexa-Api-Key": os.environ.get("NUMEXA_API_KEY")})
+                    request.headers.update(
+                        {"Content-Length": str(len(json.dumps(monger_request_body, default=str).encode("utf-8")))})
+                    #  Monger Request Ingestion Start
+                    monger_request_option = Options(method=request.method, headers=request.headers,
+                                                    json_body=monger_request_body,
+                                                    url=NUMEXA_INGEST_LOGS)
+                    monger_request = self._build_monger(options=monger_request_option)
+                    await self._client.send(monger_request, auth=self.custom_auth, stream=stream)
+                    #  Monger Request Ingestion End
+
+                    # Preparing Monger Response Body
+                    monger_response_body = dict()
+                    monger_response_body["initiated_timestamp"] = initiated_timestamp
+                    monger_response_body["response_timestamp"] = response_timestamp
+                    monger_response_body["response_status_code"] = res.status_code
+                    monger_response_body["response_body"] = json.loads(res.content.decode("utf-8"))
+                    res.headers.update(
+                        {"X-Numexa-Log-Type": "response", "X-Numexa-Api-Key": os.environ.get("NUMEXA_API_KEY")})
+                    res.headers.update(
+                        {"Content-Length": str(len(json.dumps(monger_response_body, default=str).encode("utf-8")))})
+                    # Monger Response Ingestion Start
+                    monger_response_option = Options(method=request.method, headers=res.headers,
+                                                     json_body=monger_response_body, url=NUMEXA_INGEST_LOGS)
+                    monger_response = self._build_monger(options=monger_response_option)
+                    await self._client.send(monger_response, auth=self.custom_auth, stream=stream)
+                    # Monger Response Ingestion End
                 res.raise_for_status()
             except httpx.HTTPStatusError as err:  # 4xx and 5xx errors
                 # If the response is streamed then we need to explicitly read the response
@@ -431,6 +472,20 @@ class APIClient:
                 f"Expected stream_cls to have been given a generic type argument, e.g. Stream[Foo] but received {stream_cls}",
             )
         return cast(type, args[0])
+    
+    def _build_monger(self, options: Options) -> httpx.Request:
+        headers = options.headers
+        method = options.method
+        params = options.params
+        url = options.url
+        json_body = options.json_body
+        return self._client.build_request(
+            method=method,
+            url=url,
+            headers=headers,
+            params=params,
+            json=json_body,
+            timeout=options.timeout)
 
     def _make_status_error_from_response(
         self,
