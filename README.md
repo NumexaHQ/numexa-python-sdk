@@ -95,10 +95,23 @@ Numexa client's config takes 3 params: `api_key`, `mode`, `llms`.
 * `llms`: This is an array where we pass our LLMs constructed using the LLMOptions constructor.
 
 ```py
+
+import asyncio
+import os
+
+# For Observability (Mandatory)
+os.environ["NUMEXA_API_KEY"] = "Your Key"  
+
+# By Default proxy is always Enabled, If we do not want any proxy
+os.environ["NUMEXA_PROXY"] = "disable"
+
+# We need to set OPEN_API_KEY in case of Zero Proxy Overhead or Numexa-Free-Version Expired 
+os.environ["OPEN_API_KEY"] = "Bearer YOURKEY"
+
 import numexa
 from numexa import Config, LLMOptions
 
-llm = LLMOptions(provider="openai", model="gpt-4", virtual_key="key_a"),
+llm = LLMOptions(provider="openai", model="gpt-4", virtual_key="a"),
 numexa.config = Config(mode="single",llms=[llm])
 
 ```
@@ -111,13 +124,14 @@ Since our LLM is GPT4, we will use ChatCompletions:
 
 ```py
 # noinspection PyUnresolvedReferences
-response = numexa.ChatCompletions.create(
-  messages=[{
-    "role": "user",
-    "content": "Who are you ?"
-  }]
-)
-print(response.choices[0].message)
+async def jarvis():
+    response = await numexa.ChatCompletions.create(
+        messages=[{
+            "role": "user",
+            "content": "Capital Of India?"
+        }]
+    )
+    print(response)
 ```
 
 You have integrated Numexa Python SDK in just 4 steps!
@@ -127,22 +141,47 @@ You have integrated Numexa Python SDK in just 4 steps!
 ## **🔁 Demo: Implementing GPT4 to GPT3.5 Fallback Using the Numexa SDK**
 
 ```py
+import asyncio
 import os
-os.environ["NUMEXA_API_KEY"] = "NUMEXA_API_KEY" # Setting the Numexa API Key
+
+# For Observability (Mandatory)
+os.environ["NUMEXA_API_KEY"] = "Your Key"  
+
+# By Default proxy is always Enabled, If we do not want any proxy
+os.environ["NUMEXA_PROXY"] = "disable"
+
+# We need to set OPEN_API_KEY in case of Zero Proxy Overhead or Numexa-Free-Version Expired 
+os.environ["OPEN_API_KEY"] = "Bearer YOURKEY"
 
 import numexa
 from numexa import Config, LLMOptions
 
 # Let's construct our LLMs.
-llm1 = LLMOptions(provider="openai", model="gpt-4", virtual_key="key_a"),
-llm2 = LLMOptions(provider="openai", model="gpt-3.5-turbo", virtual_key="key_a")
+llm1 = LLMOptions(provider="openai", model="gpt-3.5-turbo-16k-0613", virtual_key="a")
+llm2 = LLMOptions(provider="openai", model="gpt-4", virtual_key="b")
 
-# Now let's construct the Numexa client where we will set the fallback logic
-numexa.config = Config(mode="fallback",llms=[llm1,llm2])
+# In case of single LLM
+numexa.config = Config(mode="single", llms=[llm1, ])
+OR
+# In case of Multiple LLM
+numexa.config = Config(mode="fallback", llms=[llm1, llm2])
 
-# And, that's it!
-response = numexa.ChatCompletions.create()
-print(response.choices[0].message)
+async def jarvis():
+    response = await numexa.ChatCompletions.create(
+        messages=[{
+            "role": "user",
+            "content": "Who is Anu kapoor?"
+        }]
+    )
+    print(response)
+
+async def main():
+    await asyncio.gather(jarvis())
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
+
 ```
 
 ## **📔 Full List of Numexa Config**
